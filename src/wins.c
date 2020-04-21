@@ -348,7 +348,7 @@ void wins_scrollwin_delete(struct scrollwin *sw)
 void wins_scrollwin_draw_deco(struct scrollwin *sw, int hilt)
 {
 	if (hilt)
-		custom_apply_attr(sw->win, ATTR_HIGHEST);
+		custom_apply_attr(sw->win, ATTR_MIDDLE); // was ATTR_HIGHEST
 
 	box(sw->win, 0, 0);
 

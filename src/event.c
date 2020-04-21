@@ -149,7 +149,7 @@ void event_write(struct event *o, FILE * f)
 }
 
 /* Load the events from file */
-char *event_scan(FILE * f, struct tm start, int id, char *note,
+struct event *event_scan(FILE * f, struct tm start, int id, char *note,
 			 struct item_filter *filter)
 {
 	char buf[BUFSIZ], *nl;
@@ -157,13 +157,13 @@ char *event_scan(FILE * f, struct tm start, int id, char *note,
 	struct event *ev = NULL;
 	int cond;
 
-	if (!check_date(start.tm_year, start.tm_mon, start.tm_mday) ||
-	    !check_time(start.tm_hour, start.tm_min))
-		return _("illegal date in event");
+	EXIT_IF(!check_date(start.tm_year, start.tm_mon, start.tm_mday) ||
+		!check_time(start.tm_hour, start.tm_min),
+		_("date error in event"));
 
 	/* Read the event description */
 	if (!fgets(buf, sizeof buf, f))
-		return _("error in appointment description");
+		return NULL;
 
 	nl = strchr(buf, '\n');
 	if (nl) {
@@ -177,9 +177,8 @@ char *event_scan(FILE * f, struct tm start, int id, char *note,
 	start.tm_mon--;
 
 	tstart = mktime(&start);
-	if (tstart == -1)
-		return _("date error in event\n");
-	tend = ENDOFDAY(tstart);
+	EXIT_IF(tstart == -1, _("date error in the event\n"));
+	tend = tstart + DAYINSEC - 1;
 
 	/* Filter item. */
 	if (filter) {
@@ -206,7 +205,8 @@ char *event_scan(FILE * f, struct tm start, int id, char *note,
 	}
 	if (!ev)
 		ev = event_new(buf, note, tstart, id);
-	return NULL;
+
+	return ev;
 }
 
 /* Delete an event from the list. */

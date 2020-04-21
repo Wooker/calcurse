@@ -63,7 +63,7 @@ void custom_init_attr(void)
 
 	attr.color[ATTR_HIGHEST] =
 		(col_fg == -1 || col_fg == 255) ?
-		COLOR_PAIR(COLR_CUSTOM) | A_BOLD :
+		COLOR_PAIR(COLR_CUSTOM) | A_BOLD : //
 		COLOR_PAIR(COLR_CUSTOM);
 	attr.color[ATTR_HIGH] = COLOR_PAIR(COLR_HIGH);
 	attr.color[ATTR_MIDDLE] = COLOR_PAIR(COLR_RED) | A_BOLD;

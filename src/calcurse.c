@@ -49,12 +49,11 @@ int count, reg;
  */
 static void do_storage(int day_changed)
 {
-	int pre_sel;
 	/*
 	 * Save the selected item before rebuilding the day vector -
-	 * unless a preselection is already set.
+	 * unless already set.
 	 */
-	if (!(pre_sel = day_check_sel_data()))
+	if (!day_check_sel_data())
 		day_set_sel_data(ui_day_get_sel());
 
 	if (!day_changed)
@@ -65,7 +64,7 @@ static void do_storage(int day_changed)
 	/* The APP listbox. */
 	ui_day_load_items();
 
-	if (day_changed && !pre_sel)
+	if (day_changed)
 		ui_day_sel_reset();
 	else
 		ui_day_find_sel();
@@ -557,7 +556,7 @@ static inline void key_generic_cmd(void)
 	int valid = 0, force = 0, ret;
 	char *error_msg;
 
-	status_mesg(_("Command: [ h(elp) | w(rite)(!) | q(uit)(!) | wq(!) | n(ext) ]"), "");
+	status_mesg(_("Command: [ h(elp) | w(rite)(!) | q(uit)(!) | wq(!) ]"), "");
 	if (getstring(win[STA].p, cmd, BUFSIZ, 0, 1) != GETSTRING_VALID)
 		goto cleanup;
 	cmd_name = strtok(cmd, " ");
@@ -605,47 +604,6 @@ static inline void key_generic_cmd(void)
 			warnbox(error_msg);
 			mem_free(error_msg);
 		}
-
-		valid = 1;
-	}
-
-	if (!strcmp(cmd_name, "next") || !strcmp(cmd_name, "n")) {
-		struct day_item *item;
-		time_t occur, next;
-		struct recur_apoint *rapt;
-		struct recur_event *rev;
-		int more = 0;
-
-		if (wins_slctd() != APP) {
-			error_msg =
-				_("Select a repeating item in the appointments panel.");
-			warnbox(error_msg);
-			goto cleanup;
-		}
-		item = ui_day_get_sel();
-		occur = item->start;
-		if (item->type == RECUR_EVNT) {
-			rev = item->item.rev;
-			more = recur_next_occurrence(rev->day, -1, rev->rpt, &rev->exc,
-						     occur, &next);
-		} else if (item->type == RECUR_APPT) {
-			rapt = item->item.rapt;
-			more = recur_next_occurrence(rapt->start, rapt->dur, rapt->rpt,
-						     &rapt->exc, occur, &next);
-		} else {
-			error_msg = _("Not a repeating item.");
-			warnbox(error_msg);
-			goto cleanup;
-		}
-		if (!more) {
-			error_msg = _("Last repetition.");
-			warnbox(error_msg);
-			goto cleanup;
-		}
-		item->start = next;
-		ui_calendar_set_slctd_day(sec2date(next));
-		day_set_sel_data(item);
-		do_storage(1);
 
 		valid = 1;
 	}

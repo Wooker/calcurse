@@ -148,12 +148,6 @@
 
 /* Calendar window. */
 #define CALHEIGHT       8
-/*
- * Week day numbering (0, 1,..., 6) which depends on the first day of the week.
- * The argument (d) is the "Sunday"-numbering of member tm_wday in struct tm.
- */
-#define WDAY(d) \
-    (ui_calendar_week_begins_on_monday() ? ((d ? d : WEEKINDAYS) - 1) : d)
 
 /* Key definitions. */
 #define CTRLVAL         0x1F
@@ -385,57 +379,40 @@ struct excp {
 };
 
 enum recur_type {
+	RECUR_NO,
 	RECUR_DAILY,
 	RECUR_WEEKLY,
 	RECUR_MONTHLY,
 	RECUR_YEARLY,
-	NBRECUR
+	RECUR_TYPES
 };
 
-/*
- * Recurrence rule according to RFC5545; used
- * - in each recurrent appointment/event instance
- * - in passing parameters as a single function argument
- */
+/* To describe an item's repetition. */
 struct rpt {
-	enum recur_type type;	/* FREQ */
-	int freq;		/* INTERVAL */
-	time_t until;		/* UNTIL */
-	llist_t bymonth;	/* BYMONTH list */
-	llist_t bywday;		/* BY(WEEK)DAY list */
-	llist_t bymonthday;	/* BYMONTHDAY list */
-	llist_t exc;		/* EXDATE's */
+	enum recur_type type;	/* repetition type */
+	int freq;		/* repetition frequency */
+	time_t until;		/* ending date for repeated event */
 };
-
-/* Types of integers in rrule lists. */
-typedef enum {
-	BYMONTH,
-	BYDAY_W,
-	BYDAY_M,
-	BYDAY_Y,
-	BYMONTHDAY,
-	NOLL
-} int_list_t;
 
 /* Recurrent appointment definition. */
 struct recur_apoint {
-	struct rpt *rpt;	/* recurrence rule */
-	llist_t exc;		/* recurrence exceptions (NOT rpt->exc) */
-	time_t start;		/* start time */
-	long dur;		/* duration */
-	char state;		/* item state */
-	char *mesg;		/* description */
-	char *note;		/* attached note */
+	struct rpt *rpt;	/* information about repetition */
+	llist_t exc;		/* days when the item should not be repeated */
+	time_t start;		/* beggining of the appointment */
+	long dur;		/* duration of the appointment */
+	char state;		/* 8 bits to store item state */
+	char *mesg;		/* appointment description */
+	char *note;		/* note attached to appointment */
 };
 
-/* Recurrent event definition. */
+/* Reccurent event definition. */
 struct recur_event {
-	struct rpt *rpt;	/* recurrence rule */
-	llist_t exc;		/* recurrence exceptions (NOT rpt->exc) */
+	struct rpt *rpt;	/* information about repetition */
+	llist_t exc;		/* days when the item should not be repeated */
 	int id;			/* event type */
-	time_t day;		/* day of the event */
-	char *mesg;		/* description */
-	char *note;		/* attached note */
+	time_t day;		/* day at which event occurs */
+	char *mesg;		/* event description */
+	char *note;		/* note attached to event */
 };
 
 /* Generic pointer data type for appointments and events. */
@@ -785,7 +762,7 @@ void apoint_sec2str(struct apoint *, time_t, char *, char *);
 char *apoint_tostr(struct apoint *);
 char *apoint_hash(struct apoint *);
 void apoint_write(struct apoint *, FILE *);
-char *apoint_scan(FILE *, struct tm, struct tm, char, char *,
+struct apoint *apoint_scan(FILE *, struct tm, struct tm, char, char *,
 			   struct item_filter *);
 void apoint_delete(struct apoint *);
 struct notify_app *apoint_check_next(struct notify_app *, time_t);
@@ -883,7 +860,7 @@ unsigned event_inday(struct event *, time_t *);
 char *event_tostr(struct event *);
 char *event_hash(struct event *);
 void event_write(struct event *, FILE *);
-char *event_scan(FILE *, struct tm, int, char *, struct item_filter *);
+struct event *event_scan(FILE *, struct tm, int, char *, struct item_filter *);
 void event_delete(struct event *);
 void event_paste_item(struct event *, time_t);
 int event_dummy(struct day_item *);
@@ -1052,11 +1029,7 @@ void pcal_export_data(FILE *);
 /* recur.c */
 extern llist_ts_t recur_alist_p;
 extern llist_t recur_elist;
-void recur_free_int_list(llist_t *);
-void recur_int_list_dup(llist_t *, llist_t *);
-void recur_free_exc_list(llist_t *);
-void recur_exc_dup(llist_t *, llist_t *);
-int recur_str2exc(llist_t *, char *);
+int recur_update_exc(llist_t *, char *);
 char *recur_exc2str(llist_t *);
 struct recur_event *recur_event_dup(struct recur_event *);
 struct recur_apoint *recur_apoint_dup(struct recur_apoint *);
@@ -1069,16 +1042,17 @@ void recur_event_llist_init(void);
 void recur_apoint_llist_free(void);
 void recur_event_llist_free(void);
 struct recur_apoint *recur_apoint_new(char *, char *, time_t, long, char,
-				      struct rpt *);
-struct recur_event *recur_event_new(char *, char *, time_t, int,
-				     struct rpt *);
+				      int, int, time_t, llist_t *);
+struct recur_event *recur_event_new(char *, char *, time_t, int, int, int,
+				    time_t, llist_t *);
 char recur_def2char(enum recur_type);
 int recur_char2def(char);
-char *recur_apoint_scan(FILE *, struct tm, struct tm, char,
-				       char *, struct item_filter *,
-				       struct rpt *);
-char *recur_event_scan(FILE *, struct tm, int, char *,
-				     struct item_filter *, struct rpt *);
+struct recur_apoint *recur_apoint_scan(FILE *, struct tm, struct tm,
+				       char, int, struct tm, char *,
+				       llist_t *, char, struct item_filter *);
+struct recur_event *recur_event_scan(FILE *, struct tm, int, char,
+				     int, struct tm, char *, llist_t *,
+				     struct item_filter *);
 char *recur_apoint_tostr(struct recur_apoint *);
 char *recur_apoint_hash(struct recur_apoint *);
 void recur_apoint_write(struct recur_apoint *, FILE *);
@@ -1086,27 +1060,22 @@ char *recur_event_tostr(struct recur_event *);
 char *recur_event_hash(struct recur_event *);
 void recur_event_write(struct recur_event *, FILE *);
 void recur_save_data(FILE *);
-unsigned recur_item_find_occurrence(time_t, long, struct rpt *, llist_t *,
-				    time_t, time_t *);
+unsigned recur_item_find_occurrence(time_t, long, llist_t *, int,
+				    int, time_t, time_t, time_t *);
 unsigned recur_apoint_find_occurrence(struct recur_apoint *, time_t, time_t *);
 unsigned recur_event_find_occurrence(struct recur_event *, time_t, time_t *);
-unsigned recur_item_inday(time_t, long, struct rpt *, llist_t *, time_t);
+unsigned recur_item_inday(time_t, long, llist_t *, int, int, time_t, time_t);
 unsigned recur_apoint_inday(struct recur_apoint *, time_t *);
 unsigned recur_event_inday(struct recur_event *, time_t *);
 void recur_event_add_exc(struct recur_event *, time_t);
 void recur_apoint_add_exc(struct recur_apoint *, time_t);
 void recur_event_erase(struct recur_event *);
 void recur_apoint_erase(struct recur_apoint *);
-void recur_bymonth(llist_t *, FILE *);
-void recur_bywday(enum recur_type, llist_t *, FILE *);
-void recur_bymonthday(llist_t *, FILE *);
 void recur_exc_scan(llist_t *, FILE *);
 void recur_apoint_check_next(struct notify_app *, time_t, time_t);
 void recur_apoint_switch_notify(struct recur_apoint *);
 void recur_event_paste_item(struct recur_event *, time_t);
 void recur_apoint_paste_item(struct recur_apoint *, time_t);
-int recur_next_occurrence(time_t, long, struct rpt *, llist_t *, time_t, time_t *);
-
 
 /* sigs.c */
 void sigs_init(void);
@@ -1266,9 +1235,6 @@ int hash_matches(const char *, const char *);
 int show_dialogs(void);
 long overflow_add(long, long, long *);
 long overflow_mul(long, long, long *);
-time_t next_wday(time_t, int);
-int wday_per_year(int, int);
-int wday_per_month(int, int, int);
 
 /* vars.c */
 extern int col, row;

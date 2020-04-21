@@ -195,7 +195,7 @@ void apoint_write(struct apoint *o, FILE * f)
 	mem_free(str);
 }
 
-char *apoint_scan(FILE * f, struct tm start, struct tm end,
+struct apoint *apoint_scan(FILE * f, struct tm start, struct tm end,
 			   char state, char *note, struct item_filter *filter)
 {
 	char buf[BUFSIZ], *newline;
@@ -203,15 +203,15 @@ char *apoint_scan(FILE * f, struct tm start, struct tm end,
 	struct apoint *apt = NULL;
 	int cond;
 
-	if (!check_date(start.tm_year, start.tm_mon, start.tm_mday) ||
-	    !check_date(end.tm_year, end.tm_mon, end.tm_mday) ||
-	    !check_time(start.tm_hour, start.tm_min) ||
-	    !check_time(end.tm_hour, end.tm_min))
-		return _("illegal date in appointment");
+	EXIT_IF(!check_date(start.tm_year, start.tm_mon, start.tm_mday) ||
+		!check_date(end.tm_year, end.tm_mon, end.tm_mday) ||
+		!check_time(start.tm_hour, start.tm_min) ||
+		!check_time(end.tm_hour, end.tm_min),
+		_("date error in appointment"));
 
 	/* Read the appointment description */
 	if (!fgets(buf, sizeof buf, f))
-		return _("error in appointment description");
+		return NULL;
 
 	newline = strchr(buf, '\n');
 	if (newline)
@@ -226,8 +226,8 @@ char *apoint_scan(FILE * f, struct tm start, struct tm end,
 
 	tstart = mktime(&start);
 	tend = mktime(&end);
-	if (tstart == -1 || tend == -1 || tstart > tend)
-		return _("date error in appointment");
+	EXIT_IF(tstart == -1 || tend == -1 || tstart > tend,
+		_("date error in appointment"));
 
 	/* Filter item. */
 	if (filter) {
@@ -255,7 +255,8 @@ char *apoint_scan(FILE * f, struct tm start, struct tm end,
 	}
 	if (!apt)
 		apt = apoint_new(buf, note, tstart, tend - tstart, state);
-	return NULL;
+
+	return apt;
 }
 
 void apoint_delete(struct apoint *apt)

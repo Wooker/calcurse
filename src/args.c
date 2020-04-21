@@ -241,8 +241,8 @@ static void next_arg(void)
 			   (time_left % MININSEC ? 1 : 0);
 		hours_left = min_left / HOURINMIN;
 		min_left = min_left % HOURINMIN;
-		fputs(_("next appointment:\n"), stdout);
-		fprintf(stdout, "   [%02d:%02d] %s\n", hours_left,
+		//fputs(_("Next appointment: "), stdout);
+		fprintf(stdout, "[%02d:%02d] %s\n", hours_left,
 			min_left, next_app.txt);
 		mem_free(next_app.txt);
 	}
